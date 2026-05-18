@@ -1,59 +1,52 @@
 import { useApp } from '@/lib/context';
-import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 
 export default function SettingsPage() {
   const { state, dispatch } = useApp();
-  const settings = state.settings;
+  const { settings } = state;
 
   return (
-    <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 600 }}>
       <Card>
-        <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Company Settings</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: 'var(--color-text)' }}>Company Settings</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Input
             label="Company Name"
             value={settings?.companyName ?? ''}
             onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { companyName: e.target.value } })}
           />
           <Input
-            label="Company Website"
-            value={settings?.companyWebsite ?? ''}
-            onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { companyWebsite: e.target.value } })}
+            label="Industry"
+            value={settings?.industry ?? ''}
+            onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { industry: e.target.value } })}
           />
+          <Input
+            label="Location"
+            value={settings?.location ?? ''}
+            onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { location: e.target.value } })}
+          />
+          <Button onClick={() => {}} variant="primary">Save Changes</Button>
         </div>
       </Card>
 
       <Card>
-        <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Notifications</h2>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>Email Notifications</div>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2 }}>Receive email alerts for new applications</div>
-          </div>
-          <Button
-            variant={settings?.emailNotifications ? 'primary' : 'secondary'}
-            size="sm"
-            onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { emailNotifications: !settings?.emailNotifications } })}
-          >
-            {settings?.emailNotifications ? 'Enabled' : 'Disabled'}
-          </Button>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Candidate Portal</h2>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 12 }}>
-          Share this link with candidates to let them apply directly.
-        </p>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <code style={{ background: 'var(--color-surface-2)', padding: '8px 12px', borderRadius: 'var(--radius-md)', fontSize: 12, flex: 1 }}>
-            {window.location.origin}/portal
-          </code>
-          <Button variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/portal`)}>
-            Copy
-          </Button>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: 'var(--color-text)' }}>User Preferences</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input
+            label="Your Name"
+            value={state.currentUser?.name ?? ''}
+            onChange={() => {}}
+            disabled
+          />
+          <Input
+            label="Role"
+            value={state.currentUser?.role ?? ''}
+            onChange={() => {}}
+            disabled
+          />
+          <Button onClick={() => {}} variant="secondary">Update Profile</Button>
         </div>
       </Card>
     </div>

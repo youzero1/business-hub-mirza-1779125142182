@@ -6,30 +6,18 @@
 
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
 }
 
-@media (max-width: 1200px) {
-  .statsGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .statsGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.grid2 {
+.grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 24px;
 }
 
 @media (max-width: 900px) {
-  .grid2 {
+  .grid {
     grid-template-columns: 1fr;
   }
 }
@@ -47,130 +35,113 @@
   color: var(--color-text);
 }
 
-.seeAll {
+.viewAll {
   font-size: 12.5px;
   color: var(--color-primary);
   font-weight: 500;
-  cursor: pointer;
+  text-decoration: none;
 }
 
-.seeAll:hover {
+.viewAll:hover {
   text-decoration: underline;
 }
 
-.jobList {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.jobItem {
+.candidateItem {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.jobItem:hover {
-  background: var(--color-surface-3);
-}
-
-.jobTitle {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.jobMeta {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-top: 2px;
-}
-
-.jobCount {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: var(--color-primary-light);
-  padding: 3px 9px;
-  border-radius: var(--radius-full);
-}
-
-.activityList {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.activityItem {
-  display: flex;
-  align-items: flex-start;
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--color-border);
 }
 
-.activityItem:last-child {
+.candidateItem:last-child {
   border-bottom: none;
 }
 
-.activityDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  margin-top: 5px;
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.activityText {
-  font-size: 13px;
+.candidateInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.candidateName {
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--color-text);
-  line-height: 1.5;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.activityTime {
-  font-size: 11.5px;
+.candidateRole {
+  font-size: 12px;
   color: var(--color-text-muted);
-  margin-top: 2px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.pipelineGrid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+.date {
+  font-size: 11.5px;
+  color: var(--color-text-subtle);
+  flex-shrink: 0;
+}
+
+.interviewItem {
+  display: flex;
+  align-items: center;
   gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
-@media (max-width: 900px) {
-  .pipelineGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.interviewItem:last-child {
+  border-bottom: none;
 }
 
-.pipelineStage {
+.interviewTime {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 16px 8px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  text-align: center;
+  min-width: 48px;
+  flex-shrink: 0;
 }
 
-.pipelineCount {
-  font-size: 24px;
+.interviewDay {
+  font-size: 18px;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--color-primary);
+  line-height: 1;
 }
 
-.pipelineLabel {
-  font-size: 12px;
+.interviewMonth {
+  font-size: 11px;
   color: var(--color-text-muted);
-  font-weight: 500;
-  text-transform: capitalize;
+  text-transform: uppercase;
+}
+
+.interviewInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.interviewHour {
+  font-size: 11.5px;
+  color: var(--color-text-subtle);
+  flex-shrink: 0;
 }

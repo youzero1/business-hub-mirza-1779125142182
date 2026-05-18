@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, ReactNode } from 'react';
-import type { AppState, Job, Interview, TeamMember, AppSettings, Candidate } from '@/types/index';
+import { AppState, Job, Candidate, Interview, TeamMember, AppSettings } from '@/types';
 import { seedData } from './seed';
 
 type Action =
@@ -50,7 +50,12 @@ function reducer(state: AppState, action: Action): AppState {
   }
 }
 
-const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action> } | null>(null);
+type AppContextValue = {
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+};
+
+const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, seedData);

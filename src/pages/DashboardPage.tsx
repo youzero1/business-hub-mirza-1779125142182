@@ -1,169 +1,139 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useApp } from '@/lib/context';
+import { getStatusColor, formatDate, getInitials } from '@/lib/utils';
+import Card from '@/components/ui/Card';
+import Badge from '@/components/ui/Badge';
+import StatCard from '@/components/ui/StatCard';
+import styles from './DashboardPage.module.css';
 import {
   Briefcase,
   Users,
   Calendar,
   TrendingUp,
-  Clock,
-  CheckCircle,
-  XCircle,
-  ChevronRight,
 } from 'lucide-react';
-import { useApp } from '@/lib/context';
-import Card from '@/components/ui/Card';
-import Badge from '@/components/ui/Badge';
-import StatCard from '@/components/ui/StatCard';
-import styles from './DashboardPage.module.css';
-import { formatDate, getStatusColor } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { state } = useApp();
-  const navigate = useNavigate();
   const { jobs, candidates, interviews } = state;
 
-  const stats = useMemo(() => {
-    const openJobs = jobs.filter(j => j.status === 'open' || j.status === 'published').length;
-    const activeCandidates = candidates.filter(c => !['hired', 'rejected'].includes(c.status)).length;
-    const scheduledInterviews = interviews.filter(i => i.status === 'scheduled').length;
-    const hiredThisMonth = candidates.filter(c => {
-      if (c.status !== 'hired') return false;
-      const updated = new Date(c.updatedAt);
-      const now = new Date();
-      return updated.getMonth() === now.getMonth() && updated.getFullYear() === now.getFullYear();
-    }).length;
-    return { openJobs, activeCandidates, scheduledInterviews, hiredThisMonth };
-  }, [jobs, candidates, interviews]);
+  const openJobs = jobs.filter(j => j.status === 'open' || j.status === 'draft' || j.status === 'paused').length;
 
-  const recentCandidates = useMemo(() =>
-    [...candidates].sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime()).slice(0, 5),
+  const thisWeekInterviews = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+    return interviews.filter(i => {
+      const d = new Date(i.date);
+      return d >= startOfWeek && d <= endOfWeek;
+    }).length;
+  }, [interviews]);
+
+  const recentCandidates = useMemo(
+    () =>
+      [...candidates]
+        .sort((a, b) => new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime())
+        .slice(0, 5),
     [candidates]
   );
 
-  const upcomingInterviews = useMemo(() =>
-    interviews
-      .filter(i => i.status === 'scheduled')
-      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-      .slice(0, 5),
+  const upcomingInterviews = useMemo(
+    () =>
+      [...interviews]
+        .filter(i => new Date(i.date) >= new Date())
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 5),
     [interviews]
   );
 
   return (
-    <div className={styles.root}>
+    <div className={styles.page}>
       <div className={styles.statsGrid}>
         <StatCard
-          label="Open Jobs"
-          value={stats.openJobs}
+          title="Open Jobs"
+          value={openJobs}
           icon={<Briefcase size={20} />}
-          trend={{ value: 12, label: 'vs last month', positive: true }}
-          color="var(--color-primary)"
+          variant="primary"
         />
         <StatCard
-          label="Active Candidates"
-          value={stats.activeCandidates}
+          title="Total Candidates"
+          value={candidates.length}
           icon={<Users size={20} />}
-          trend={{ value: 8, label: 'vs last month', positive: true }}
-          color="var(--color-success)"
+          variant="success"
         />
         <StatCard
-          label="Scheduled Interviews"
-          value={stats.scheduledInterviews}
+          title="Interviews This Week"
+          value={thisWeekInterviews}
           icon={<Calendar size={20} />}
-          trend={{ value: 3, label: 'vs last month', positive: true }}
-          color="var(--color-warning)"
+          variant="warning"
         />
         <StatCard
-          label="Hired This Month"
-          value={stats.hiredThisMonth}
+          title="Active Pipeline"
+          value={candidates.filter(c => c.status !== 'rejected').length}
           icon={<TrendingUp size={20} />}
-          trend={{ value: 25, label: 'vs last month', positive: true }}
-          color="var(--color-accent)"
+          variant="info"
         />
       </div>
 
-      <div className={styles.grid2}>
+      <div className={styles.grid}>
         <Card>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Recent Candidates</h2>
-            <button className={styles.viewAll} onClick={() => navigate('/candidates')}>
-              View all <ChevronRight size={14} />
-            </button>
+            <span className={styles.sectionTitle}>Recent Candidates</span>
+            <Link to="/candidates" className={styles.viewAll}>View all</Link>
           </div>
-          <div className={styles.list}>
-            {recentCandidates.map(candidate => (
-              <div
-                key={candidate.id}
-                className={styles.listItem}
-                onClick={() => navigate(`/candidates/${candidate.id}`)}
-              >
-                <div className={styles.candidateAvatar}>
-                  {candidate.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-                <div className={styles.candidateInfo}>
-                  <span className={styles.candidateName}>{candidate.name}</span>
-                  <span className={styles.candidateRole}>{candidate.jobTitle}</span>
-                </div>
-                <div className={styles.candidateMeta}>
+          {recentCandidates.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No candidates yet.</p>
+          ) : (
+            recentCandidates.map(candidate => (
+              <Link key={candidate.id} to={`/candidates/${candidate.id}`} style={{ textDecoration: 'none' }}>
+                <div className={styles.candidateItem}>
+                  <div className={styles.avatar}>{getInitials(candidate.name)}</div>
+                  <div className={styles.candidateInfo}>
+                    <span className={styles.candidateName}>{candidate.name}</span>
+                    <span className={styles.candidateRole}>{candidate.position}</span>
+                  </div>
                   <Badge variant={getStatusColor(candidate.status) as 'default' | 'success' | 'warning' | 'danger' | 'info' | 'accent' | 'primary'}>
                     {candidate.status}
                   </Badge>
-                  <span className={styles.date}>{formatDate(candidate.appliedAt)}</span>
+                  <span className={styles.date}>{formatDate(candidate.appliedDate)}</span>
                 </div>
-              </div>
-            ))}
-          </div>
+              </Link>
+            ))
+          )}
         </Card>
 
         <Card>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Upcoming Interviews</h2>
-            <button className={styles.viewAll} onClick={() => navigate('/interviews')}>
-              View all <ChevronRight size={14} />
-            </button>
+            <span className={styles.sectionTitle}>Upcoming Interviews</span>
+            <Link to="/interviews" className={styles.viewAll}>View all</Link>
           </div>
-          <div className={styles.list}>
-            {upcomingInterviews.map(interview => (
-              <div key={interview.id} className={styles.listItem}>
-                <div className={styles.interviewIcon}>
-                  <Calendar size={16} />
-                </div>
-                <div className={styles.candidateInfo}>
-                  <span className={styles.candidateName}>{interview.candidateName}</span>
-                  <span className={styles.candidateRole}>{interview.jobTitle} · {interview.type}</span>
-                </div>
-                <div className={styles.candidateMeta}>
-                  <span className={styles.date}>{formatDate(interview.scheduledAt)}</span>
+          {upcomingInterviews.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No upcoming interviews.</p>
+          ) : (
+            upcomingInterviews.map(interview => {
+              const d = new Date(interview.date);
+              return (
+                <div key={interview.id} className={styles.interviewItem}>
                   <div className={styles.interviewTime}>
-                    <Clock size={12} />
-                    {new Date(interview.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <span className={styles.interviewDay}>{d.getDate()}</span>
+                    <span className={styles.interviewMonth}>{d.toLocaleString('default', { month: 'short' })}</span>
                   </div>
+                  <div className={styles.interviewInfo}>
+                    <span className={styles.candidateName}>{interview.candidateId}</span>
+                    <span className={styles.candidateRole}>{interview.jobId} · {interview.type}</span>
+                  </div>
+                  <Badge variant={getStatusColor(interview.status) as 'default' | 'success' | 'warning' | 'danger' | 'info' | 'accent' | 'primary'}>
+                    {interview.status}
+                  </Badge>
+                  <span className={styles.interviewHour}>{interview.time}</span>
                 </div>
-              </div>
-            ))}
-          </div>
+              );
+            })
+          )}
         </Card>
       </div>
-
-      <Card>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Pipeline Overview</h2>
-        </div>
-        <div className={styles.pipelineGrid}>
-          {(['new', 'screening', 'interview', 'offer', 'hired', 'rejected'] as const).map(status => {
-            const count = candidates.filter(c => c.status === status).length;
-            const Icon = status === 'hired' ? CheckCircle : status === 'rejected' ? XCircle : Users;
-            return (
-              <div key={status} className={styles.pipelineItem}>
-                <div className={styles.pipelineIcon}>
-                  <Icon size={18} />
-                </div>
-                <div className={styles.pipelineCount}>{count}</div>
-                <div className={styles.pipelineLabel}>{status.charAt(0).toUpperCase() + status.slice(1)}</div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
     </div>
   );
 }

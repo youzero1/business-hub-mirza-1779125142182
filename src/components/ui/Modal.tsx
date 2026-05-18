@@ -5,17 +5,18 @@ import styles from './Modal.module.css';
 export type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  title?: string;
+  title: string;
   children: React.ReactNode;
-  footer?: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 };
 
-export default function Modal({ isOpen, onClose, title, children, footer }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
   useEffect(() => {
+    if (!isOpen) return;
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
-    if (isOpen) document.addEventListener('keydown', handleKey);
+    document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
@@ -23,15 +24,17 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+      <div
+        className={`${styles.modal} ${styles[size]}`}
+        onClick={e => e.stopPropagation()}
+      >
         <div className={styles.header}>
-          {title && <h2 className={styles.title}>{title}</h2>}
+          <h2 className={styles.title}>{title}</h2>
           <button className={styles.closeBtn} onClick={onClose}>
             <X size={18} />
           </button>
         </div>
         <div className={styles.body}>{children}</div>
-        {footer && <div className={styles.footer}>{footer}</div>}
       </div>
     </div>
   );
