@@ -1,266 +1,319 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Briefcase, MapPin, Users, ChevronRight, Filter } from 'lucide-react';
+import { Plus, Briefcase, Search, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import { useApp } from '@/lib/context';
-import Badge from '@/components/ui/Badge';
-import Modal from '@/components/ui/Modal';
+import { formatDate, getJobStatusLabel, formatSalary } from '@/lib/utils';
+import { Job, JobStatus, JobType, ExperienceLevel } from '@/types/index';
 import Button from '@/components/ui/Button';
+import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
+import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import Textarea from '@/components/ui/Textarea';
 import EmptyState from '@/components/ui/EmptyState';
-import { formatDate, jobStatusLabel, formatSalary, generateId } from '@/lib/utils';
-import type { Job, JobStatus } from '@/types';
-import styles from './JobsPage.module.css';
 
-type JobStatusBadge = 'success' | 'warning' | 'danger' | 'default';
+type JobFormState = {
+  title: string;
+  department: string;
+  location: string;
+  type: JobType;
+  status: JobStatus;
+  experienceLevel: ExperienceLevel;
+  description: string;
+  requirements: string;
+  salaryMin: string;
+  salaryMax: string;
+  currency: string;
+};
 
-function statusToBadge(status: JobStatus): JobStatusBadge {
-  if (status === 'open') return 'success';
-  if (status === 'paused') return 'warning';
-  if (status === 'closed') return 'danger';
-  return 'default';
+const defaultForm: JobFormState = {
+  title: '',
+  department: '',
+  location: '',
+  type: 'full_time',
+  status: 'draft',
+  experienceLevel: 'mid',
+  description: '',
+  requirements: '',
+  salaryMin: '',
+  salaryMax: '',
+  currency: 'USD',
+};
+
+const statusVariantMap: Record<JobStatus, 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary'> = {
+  draft: 'default',
+  published: 'success',
+  closed: 'danger',
+  on_hold: 'warning',
+};
+
+function generateId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-const defaultStages = [
-  { id: 'ds1', name: 'Applied', order: 0, color: '#6c63ff', type: 'applied' as const },
-  { id: 'ds2', name: 'Screening', order: 1, color: '#3b82f6', type: 'screening' as const },
-  { id: 'ds3', name: 'Interview', order: 2, color: '#f59e0b', type: 'interview' as const },
-  { id: 'ds4', name: 'Technical', order: 3, color: '#06b6d4', type: 'technical' as const },
-  { id: 'ds5', name: 'Offer', order: 4, color: '#22c55e', type: 'offer' as const },
-  { id: 'ds6', name: 'Hired', order: 5, color: '#22c55e', type: 'hired' as const },
-];
-
 export default function JobsPage() {
-  const { state, addJob, updateJob, deleteJob } = useApp();
   const navigate = useNavigate();
-  const { jobs, currentUser } = state;
-
+  const { state, dispatch } = useApp();
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('');
-  const [filterDept, setFilterDept] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<JobStatus | 'all'>('all');
   const [showModal, setShowModal] = useState(false);
+  const [editJob, setEditJob] = useState<Job | null>(null);
+  const [form, setForm] = useState<JobFormState>(defaultForm);
 
-  const [form, setForm] = useState({
-    title: '',
-    department: '',
-    location: '',
-    type: 'full_time' as Job['type'],
-    status: 'open' as JobStatus,
-    description: '',
-    requirements: '',
-    salaryMin: '',
-    salaryMax: '',
-    openings: '1',
+  const addJob = (job: Job) => dispatch({ type: 'ADD_JOB', payload: job });
+  const updateJob = (job: Job) => dispatch({ type: 'UPDATE_JOB', payload: job });
+  const deleteJob = (id: string) => dispatch({ type: 'DELETE_JOB', payload: id });
+
+  const filtered = state.jobs.filter((j) => {
+    const matchSearch =
+      j.title.toLowerCase().includes(search.toLowerCase()) ||
+      j.department.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === 'all' || j.status === filterStatus;
+    return matchSearch && matchStatus;
   });
 
-  const departments = useMemo(() => {
-    const depts = new Set(jobs.map(j => j.department));
-    return Array.from(depts);
-  }, [jobs]);
-
-  const filtered = useMemo(() => {
-    return jobs.filter(j => {
-      const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) ||
-        j.department.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = !filterStatus || j.status === filterStatus;
-      const matchDept = !filterDept || j.department === filterDept;
-      return matchSearch && matchStatus && matchDept;
-    });
-  }, [jobs, search, filterStatus, filterDept]);
-
-  function handleSubmit() {
-    if (!form.title || !form.department || !form.location) return;
-    const now = new Date().toISOString();
-    const newJob: Job = {
-      id: generateId(),
-      title: form.title,
-      department: form.department,
-      location: form.location,
-      type: form.type,
-      status: form.status,
-      description: form.description,
-      requirements: form.requirements.split('\n').filter(r => r.trim()),
-      salaryMin: form.salaryMin ? parseInt(form.salaryMin) : undefined,
-      salaryMax: form.salaryMax ? parseInt(form.salaryMax) : undefined,
-      currency: 'USD',
-      createdAt: now,
-      updatedAt: now,
-      postedAt: form.status === 'open' ? now : undefined,
-      hiringManagerId: currentUser.id,
-      recruiterId: currentUser.id,
-      stages: defaultStages,
-      applicationCount: 0,
-      openings: parseInt(form.openings) || 1,
-    };
-    addJob(newJob);
-    setShowModal(false);
-    setForm({ title: '', department: '', location: '', type: 'full_time', status: 'open', description: '', requirements: '', salaryMin: '', salaryMax: '', openings: '1' });
+  function openCreate() {
+    setEditJob(null);
+    setForm(defaultForm);
+    setShowModal(true);
   }
 
-  function handleStatusChange(job: Job, status: JobStatus) {
-    updateJob({ ...job, status, updatedAt: new Date().toISOString() });
+  function openEdit(job: Job) {
+    setEditJob(job);
+    setForm({
+      title: job.title,
+      department: job.department,
+      location: job.location,
+      type: job.type,
+      status: job.status,
+      experienceLevel: job.experienceLevel,
+      description: job.description,
+      requirements: job.requirements.join('\n'),
+      salaryMin: job.salary?.min?.toString() ?? '',
+      salaryMax: job.salary?.max?.toString() ?? '',
+      currency: job.salary?.currency ?? 'USD',
+    });
+    setShowModal(true);
+  }
+
+  function handleSubmit() {
+    if (!form.title.trim() || !form.department.trim()) return;
+    const salary =
+      form.salaryMin || form.salaryMax
+        ? {
+            min: form.salaryMin ? parseInt(form.salaryMin) : 0,
+            max: form.salaryMax ? parseInt(form.salaryMax) : 0,
+            currency: form.currency || 'USD',
+          }
+        : undefined;
+
+    if (editJob) {
+      updateJob({
+        ...editJob,
+        title: form.title,
+        department: form.department,
+        location: form.location,
+        type: form.type,
+        status: form.status,
+        experienceLevel: form.experienceLevel,
+        description: form.description,
+        requirements: form.requirements.split('\n').filter(Boolean),
+        salary,
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      const now = new Date().toISOString();
+      addJob({
+        id: generateId(),
+        title: form.title,
+        department: form.department,
+        location: form.location,
+        type: form.type,
+        status: form.status,
+        experienceLevel: form.experienceLevel,
+        description: form.description,
+        requirements: form.requirements.split('\n').filter(Boolean),
+        salary,
+        createdAt: now,
+        updatedAt: now,
+        applicationCount: 0,
+      });
+    }
+    setShowModal(false);
+  }
+
+  function handleDelete(id: string) {
+    if (confirm('Delete this job posting?')) {
+      deleteJob(id);
+    }
+  }
+
+  function setField<K extends keyof JobFormState>(key: K, value: JobFormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.toolbar}>
-        <div className={styles.searchRow}>
-          <div className={styles.searchBox}>
-            <Search size={15} className={styles.searchIcon} />
-            <input
-              className={styles.searchInput}
-              placeholder="Search jobs..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <div className={styles.filters}>
-            <Filter size={14} />
-            <select
-              className={styles.filterSelect}
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="open">Open</option>
-              <option value="draft">Draft</option>
-              <option value="paused">Paused</option>
-              <option value="closed">Closed</option>
-            </select>
-            <select
-              className={styles.filterSelect}
-              value={filterDept}
-              onChange={e => setFilterDept(e.target.value)}
-            >
-              <option value="">All Departments</option>
-              {departments.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text)' }}>Job Postings</h2>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>
+            {state.jobs.length} total positions
+          </p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus size={16} />
-          Post Job
+        <Button onClick={openCreate}>
+          <Plus size={16} /> New Job
         </Button>
       </div>
 
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '7px 12px',
+            flex: 1,
+            minWidth: 200,
+          }}
+        >
+          <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
+          <input
+            style={{
+              background: 'none',
+              border: 'none',
+              outline: 'none',
+              color: 'var(--color-text)',
+              fontSize: 13,
+              width: '100%',
+            }}
+            placeholder="Search jobs..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as JobStatus | 'all')}
+          options={[
+            { value: 'all', label: 'All Statuses' },
+            { value: 'draft', label: 'Draft' },
+            { value: 'published', label: 'Published' },
+            { value: 'closed', label: 'Closed' },
+            { value: 'on_hold', label: 'On Hold' },
+          ]}
+        />
+      </div>
+
+      {/* Job List */}
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Briefcase size={24} />}
           title="No jobs found"
-          description="Try adjusting your filters or post a new job position."
-          action={<Button onClick={() => setShowModal(true)}>Post New Job</Button>}
+          description="Create a new job posting to get started."
+          action={<Button onClick={openCreate}>Create Job</Button>}
         />
       ) : (
-        <div className={styles.jobGrid}>
-          {filtered.map(job => (
-            <div key={job.id} className={styles.jobCard}>
-              <div className={styles.jobCardHeader}>
-                <div className={styles.jobCardTitle} onClick={() => navigate(`/jobs/${job.id}`)}>
-                  <h3>{job.title}</h3>
-                  <div className={styles.jobCardMeta}>
-                    <span className={styles.metaItem}><MapPin size={12} />{job.location}</span>
-                    <span className={styles.metaItem}><Users size={12} />{job.applicationCount} applicants</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {filtered.map((job) => (
+            <Card key={job.id} hover padding="md">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: 'var(--color-text)',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => navigate(`/jobs/${job.id}`)}
+                    >
+                      {job.title}
+                    </span>
+                    <Badge variant={statusVariantMap[job.status]}>
+                      {getJobStatusLabel(job.status)}
+                    </Badge>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                    {job.department} &middot; {job.location}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {job.salary?.min && job.salary?.max && (
+                      <Badge variant="info">
+                        {formatSalary(job.salary.min, job.salary.max, job.salary.currency)}
+                      </Badge>
+                    )}
+                    <Badge variant="default">{job.type.replace('_', ' ')}</Badge>
+                    <Badge variant="default">{job.experienceLevel}</Badge>
+                    <Badge variant="default">{job.applicationCount ?? 0} applicants</Badge>
                   </div>
                 </div>
-                <Badge variant={statusToBadge(job.status)} dot>{jobStatusLabel(job.status)}</Badge>
-              </div>
-              <div className={styles.jobCardBody}>
-                <div className={styles.jobMeta}>
-                  <Badge variant="default">{job.department}</Badge>
-                  <Badge variant="default">{job.type.replace('_', ' ')}</Badge>
-                  {job.salaryMin && job.salaryMax && (
-                    <span className={styles.salary}>
-                      {formatSalary(job.salaryMin, job.salaryMax, job.currency)}
-                    </span>
-                  )}
-                </div>
-                {job.description && (
-                  <p className={styles.description}>{job.description.slice(0, 120)}{job.description.length > 120 ? '...' : ''}</p>
-                )}
-                <div className={styles.requirements}>
-                  {job.requirements.slice(0, 3).map((req, i) => (
-                    <span key={i} className={styles.reqTag}>{req}</span>
-                  ))}
-                  {job.requirements.length > 3 && (
-                    <span className={styles.reqTag}>+{job.requirements.length - 3} more</span>
-                  )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-subtle)' }}>
+                    {`Created ${formatDate(job.createdAt)}`}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => navigate(`/jobs/${job.id}`)}>
+                    <ExternalLink size={14} />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(job)}>
+                    <Pencil size={14} />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(job.id)}>
+                    <Trash2 size={14} />
+                  </Button>
                 </div>
               </div>
-              <div className={styles.jobCardFooter}>
-                <span className={styles.postedAt}>
-                  {job.postedAt ? `Posted ${formatDate(job.postedAt)}` : `Created ${formatDate(job.createdAt)}`}
-                </span>
-                <div className={styles.jobActions}>
-                  {job.status === 'open' && (
-                    <button className={styles.actionBtn} onClick={() => handleStatusChange(job, 'paused')}>Pause</button>
-                  )}
-                  {job.status === 'paused' && (
-                    <button className={styles.actionBtn} onClick={() => handleStatusChange(job, 'open')}>Reopen</button>
-                  )}
-                  {job.status === 'draft' && (
-                    <button className={styles.actionBtn} onClick={() => handleStatusChange(job, 'open')}>Publish</button>
-                  )}
-                  <button
-                    className={styles.actionBtnPrimary}
-                    onClick={() => navigate(`/jobs/${job.id}`)}
-                  >
-                    View <ChevronRight size={14} />
-                  </button>
-                  <button
-                    className={styles.actionBtnDanger}
-                    onClick={() => deleteJob(job.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Post New Job" size="lg">
-        <div className={styles.modalForm}>
-          <div className={styles.formRow}>
-            <Input
-              label="Job Title"
-              required
-              value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="e.g. Senior Frontend Engineer"
-            />
+      {/* Modal */}
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editJob ? 'Edit Job' : 'Create Job Posting'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+            <Button onClick={handleSubmit}>{editJob ? 'Save Changes' : 'Create Job'}</Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input
+            label="Job Title"
+            value={form.title}
+            onChange={(e) => setField('title', e.target.value)}
+            placeholder="e.g. Senior Software Engineer"
+            required
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Input
               label="Department"
-              required
               value={form.department}
-              onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
+              onChange={(e) => setField('department', e.target.value)}
               placeholder="e.g. Engineering"
+              required
             />
-          </div>
-          <div className={styles.formRow}>
             <Input
               label="Location"
-              required
               value={form.location}
-              onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
-              placeholder="e.g. Remote or New York, NY"
-            />
-            <Input
-              label="Openings"
-              type="number"
-              value={form.openings}
-              onChange={e => setForm(f => ({ ...f, openings: e.target.value }))}
-              placeholder="1"
+              onChange={(e) => setField('location', e.target.value)}
+              placeholder="e.g. Remote, New York"
             />
           </div>
-          <div className={styles.formRow}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Select
-              label="Employment Type"
+              label="Job Type"
               value={form.type}
-              onChange={e => setForm(f => ({ ...f, type: e.target.value as Job['type'] }))}
+              onChange={(e) => setField('type', e.target.value as JobType)}
               options={[
                 { value: 'full_time', label: 'Full Time' },
                 { value: 'part_time', label: 'Part Time' },
@@ -271,47 +324,92 @@ export default function JobsPage() {
             <Select
               label="Status"
               value={form.status}
-              onChange={e => setForm(f => ({ ...f, status: e.target.value as JobStatus }))}
+              onChange={(e) => setField('status', e.target.value as JobStatus)}
               options={[
-                { value: 'open', label: 'Open' },
                 { value: 'draft', label: 'Draft' },
-                { value: 'paused', label: 'Paused' },
+                { value: 'published', label: 'Published' },
+                { value: 'closed', label: 'Closed' },
+                { value: 'on_hold', label: 'On Hold' },
               ]}
             />
           </div>
-          <div className={styles.formRow}>
+          <Select
+            label="Experience Level"
+            value={form.experienceLevel}
+            onChange={(e) => setField('experienceLevel', e.target.value as ExperienceLevel)}
+            options={[
+              { value: 'entry', label: 'Entry Level' },
+              { value: 'mid', label: 'Mid Level' },
+              { value: 'senior', label: 'Senior' },
+              { value: 'lead', label: 'Lead' },
+              { value: 'executive', label: 'Executive' },
+            ]}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Input
-              label="Salary Min (USD)"
-              type="number"
+              label="Min Salary"
               value={form.salaryMin}
-              onChange={e => setForm(f => ({ ...f, salaryMin: e.target.value }))}
+              onChange={(e) => setField('salaryMin', e.target.value)}
+              type="number"
               placeholder="e.g. 80000"
             />
             <Input
-              label="Salary Max (USD)"
-              type="number"
+              label="Max Salary"
               value={form.salaryMax}
-              onChange={e => setForm(f => ({ ...f, salaryMax: e.target.value }))}
+              onChange={(e) => setField('salaryMax', e.target.value)}
+              type="number"
               placeholder="e.g. 120000"
             />
+            <Select
+              label="Currency"
+              value={form.currency}
+              onChange={(e) => setField('currency', e.target.value)}
+              options={[
+                { value: 'USD', label: 'USD' },
+                { value: 'EUR', label: 'EUR' },
+                { value: 'GBP', label: 'GBP' },
+              ]}
+            />
           </div>
-          <Textarea
-            label="Job Description"
-            value={form.description}
-            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-            placeholder="Describe the role, responsibilities..."
-            rows={3}
-          />
-          <Textarea
-            label="Requirements (one per line)"
-            value={form.requirements}
-            onChange={e => setForm(f => ({ ...f, requirements: e.target.value }))}
-            placeholder="5+ years of React experience\nTypeScript expertise"
-            rows={3}
-          />
-          <div className={styles.modalActions}>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-            <Button onClick={handleSubmit}>Post Job</Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)' }}>Description</label>
+            <textarea
+              style={{
+                background: 'var(--color-surface-2)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: '9px 12px',
+                color: 'var(--color-text)',
+                fontSize: 13,
+                outline: 'none',
+                resize: 'vertical',
+                minHeight: 80,
+                fontFamily: 'inherit',
+              }}
+              value={form.description}
+              onChange={(e) => setField('description', e.target.value)}
+              placeholder="Describe the role..."
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)' }}>Requirements (one per line)</label>
+            <textarea
+              style={{
+                background: 'var(--color-surface-2)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: '9px 12px',
+                color: 'var(--color-text)',
+                fontSize: 13,
+                outline: 'none',
+                resize: 'vertical',
+                minHeight: 80,
+                fontFamily: 'inherit',
+              }}
+              value={form.requirements}
+              onChange={(e) => setField('requirements', e.target.value)}
+              placeholder="5+ years of experience&#10;Proficiency in TypeScript"
+            />
           </div>
         </div>
       </Modal>
