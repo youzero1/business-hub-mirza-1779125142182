@@ -5,68 +5,54 @@ import Button from '@/components/ui/Button';
 
 export default function SettingsPage() {
   const { state, dispatch } = useApp();
+  const settings = state.settings;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 600 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)' }}>Settings</h1>
-
+    <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Card>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>Company</h2>
+        <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Company Settings</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Input
             label="Company Name"
-            value={state.settings?.companyName || ''}
+            value={settings?.companyName ?? ''}
             onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { companyName: e.target.value } })}
-            placeholder="Acme Corp"
           />
           <Input
             label="Company Website"
-            value={state.settings?.companyWebsite || ''}
+            value={settings?.companyWebsite ?? ''}
             onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { companyWebsite: e.target.value } })}
-            placeholder="https://acme.com"
           />
         </div>
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>Your Profile</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Input
-            label="Display Name"
-            value={state.currentUser.name}
-            onChange={() => {}}
-            placeholder="Your name"
-            disabled
-          />
-          <Input
-            label="Email"
-            value={state.currentUser.email}
-            onChange={() => {}}
-            placeholder="your@email.com"
-            disabled
-          />
-          <Input
-            label="Role"
-            value={state.currentUser.role}
-            onChange={() => {}}
-            disabled
-          />
-        </div>
-      </Card>
-
-      <Card>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>Notifications</h2>
+        <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Notifications</h2>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--color-text)' }}>Email Notifications</div>
-            <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>Receive email updates about candidates and interviews</div>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>Email Notifications</div>
+            <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2 }}>Receive email alerts for new applications</div>
           </div>
           <Button
-            variant={state.settings?.emailNotifications ? 'primary' : 'secondary'}
+            variant={settings?.emailNotifications ? 'primary' : 'secondary'}
             size="sm"
-            onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { emailNotifications: !state.settings?.emailNotifications } })}
+            onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { emailNotifications: !settings?.emailNotifications } })}
           >
-            {state.settings?.emailNotifications ? 'Enabled' : 'Disabled'}
+            {settings?.emailNotifications ? 'Enabled' : 'Disabled'}
+          </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Candidate Portal</h2>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 12 }}>
+          Share this link with candidates to let them apply directly.
+        </p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <code style={{ background: 'var(--color-surface-2)', padding: '8px 12px', borderRadius: 'var(--radius-md)', fontSize: 12, flex: 1 }}>
+            {window.location.origin}/portal
+          </code>
+          <Button variant="secondary" size="sm" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/portal`)}>
+            Copy
           </Button>
         </div>
       </Card>
