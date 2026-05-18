@@ -1,10 +1,11 @@
-export type JobStatus = 'open' | 'closed' | 'draft' | 'published';
+export type JobStatus = 'open' | 'closed' | 'draft' | 'paused';
 export type JobType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'remote';
 export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'lead' | 'executive';
 export type CandidateStatus = 'new' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected';
-export type InterviewStatus = 'scheduled' | 'completed' | 'cancelled';
-export type InterviewType = 'phone' | 'video' | 'onsite' | 'technical';
-export type UserRole = 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer';
+export type ApplicationStatus = 'applied' | 'reviewing' | 'shortlisted' | 'rejected' | 'hired';
+export type InterviewType = 'phone' | 'video' | 'onsite' | 'technical' | 'hr';
+export type InterviewStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+export type UserRole = 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer' | 'external';
 
 export interface Job {
   id: string;
@@ -12,15 +13,16 @@ export interface Job {
   department: string;
   location: string;
   type: JobType;
+  experienceLevel: ExperienceLevel;
   status: JobStatus;
   description: string;
   requirements: string[];
   salary?: { min: number; max: number; currency: string };
-  experienceLevel: ExperienceLevel;
-  createdAt: string;
-  updatedAt: string;
-  applicantCount: number;
-  openings: number;
+  postedDate: string;
+  closingDate?: string;
+  hiringManagerId: string;
+  teamMemberIds: string[];
+  tags: string[];
 }
 
 export interface Candidate {
@@ -29,33 +31,29 @@ export interface Candidate {
   email: string;
   phone?: string;
   location?: string;
-  jobId: string;
-  jobTitle: string;
+  currentRole?: string;
+  appliedJobId?: string;
   status: CandidateStatus;
+  applicationStatus?: ApplicationStatus;
   resumeUrl?: string;
   linkedinUrl?: string;
-  portfolioUrl?: string;
   skills: string[];
-  experience: number;
-  notes?: string;
+  notes: string;
+  appliedDate: string;
+  source?: string;
   rating?: number;
-  appliedAt: string;
-  updatedAt: string;
   tags: string[];
 }
 
 export interface Interview {
   id: string;
   candidateId: string;
-  candidateName: string;
   jobId: string;
-  jobTitle: string;
-  interviewerId: string;
-  interviewerName: string;
   type: InterviewType;
   status: InterviewStatus;
   scheduledAt: string;
   duration: number;
+  interviewerIds: string[];
   location?: string;
   notes?: string;
   feedback?: string;
@@ -69,15 +67,17 @@ export interface TeamMember {
   role: UserRole;
   department: string;
   avatarUrl?: string;
-  joinedAt: string;
-  activeInterviews: number;
+  isActive: boolean;
+  joinedDate: string;
 }
 
 export interface AppSettings {
   companyName: string;
-  companyWebsite: string;
+  companyLogo?: string;
+  timezone: string;
+  dateFormat: string;
   emailNotifications: boolean;
-  theme: 'light' | 'dark';
+  slackIntegration: boolean;
 }
 
 export interface AppState {
@@ -85,6 +85,6 @@ export interface AppState {
   candidates: Candidate[];
   interviews: Interview[];
   team: TeamMember[];
-  currentUser: TeamMember;
   settings: AppSettings;
+  currentUser: TeamMember;
 }
