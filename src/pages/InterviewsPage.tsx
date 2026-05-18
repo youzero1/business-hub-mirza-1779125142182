@@ -1,71 +1,67 @@
 import { useState } from 'react';
 import { useApp } from '@/lib/context';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, Video, MapPin, Plus } from 'lucide-react';
+import { formatDateTime, getInterviewTypeLabel } from '@/lib/utils';
+import type { InterviewType, InterviewStatus } from '@/types/index';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
-import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
-import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import { formatDate } from '@/lib/utils';
-import type { Interview, InterviewType } from '@/types/index';
+import EmptyState from '@/components/ui/EmptyState';
+import { Calendar, Plus, Clock } from 'lucide-react';
 
 const typeOptions: { value: InterviewType; label: string }[] = [
   { value: 'phone', label: 'Phone Screen' },
   { value: 'video', label: 'Video Call' },
-  { value: 'onsite', label: 'On-site' },
   { value: 'technical', label: 'Technical' },
-  { value: 'cultural', label: 'Cultural Fit' },
+  { value: 'onsite', label: 'On-site' },
+  { value: 'behavioral', label: 'Behavioral' },
 ];
 
 export default function InterviewsPage() {
   const { state, dispatch } = useApp();
-  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<InterviewStatus | 'all'>('all');
   const [form, setForm] = useState({
     candidateId: '',
     jobId: '',
-    type: 'video' as InterviewType,
+    type: 'phone' as InterviewType,
     scheduledAt: '',
-    duration: '60',
-    location: '',
+    duration: '30',
     notes: '',
   });
 
-  const interviews = [...state.interviews].sort(
-    (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
-  );
-
-  function handleAdd() {
+  function handleSubmit() {
     if (!form.candidateId || !form.jobId || !form.scheduledAt) return;
     const now = new Date().toISOString();
-    const newInterview: Interview = {
-      id: `i-${Date.now()}`,
-      candidateId: form.candidateId,
-      jobId: form.jobId,
-      applicationId: '',
-      type: form.type,
-      status: 'scheduled',
-      scheduledAt: new Date(form.scheduledAt).toISOString(),
-      duration: parseInt(form.duration) || 60,
-      location: form.location.trim(),
-      interviewers: [],
-      notes: form.notes.trim(),
-      createdAt: now,
-      updatedAt: now,
-    };
-    dispatch({ type: 'ADD_INTERVIEW', payload: newInterview });
-    setForm({ candidateId: '', jobId: '', type: 'video', scheduledAt: '', duration: '60', location: '', notes: '' });
+    dispatch({
+      type: 'ADD_INTERVIEW',
+      payload: {
+        id: `int-${Date.now()}`,
+        candidateId: form.candidateId,
+        jobId: form.jobId,
+        type: form.type,
+        status: 'scheduled',
+        scheduledAt: form.scheduledAt,
+        duration: parseInt(form.duration, 10),
+        interviewerIds: [],
+        notes: form.notes,
+        createdAt: now,
+      },
+    });
     setShowModal(false);
+    setForm({ candidateId: '', jobId: '', type: 'phone', scheduledAt: '', duration: '30', notes: '' });
   }
 
   const candidateOptions = state.candidates.map(c => ({ value: c.id, label: c.name }));
   const jobOptions = state.jobs.filter(j => j.status === 'open').map(j => ({ value: j.id, label: j.title }));
 
-  const statusVariant: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
-    scheduled: 'info',
+  const filtered = filterStatus === 'all'
+    ? state.interviews
+    : state.interviews.filter(i => i.status === filterStatus);
+
+  const statusVariant: Record<InterviewStatus, 'default' | 'primary' | 'success' | 'danger' | 'warning'> = {
+    scheduled: 'primary',
     completed: 'success',
     cancelled: 'danger',
     no_show: 'warning',
@@ -73,50 +69,63 @@ export default function InterviewsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button size="sm" onClick={() => setShowModal(true)}>
-          <Plus size={15} /> Schedule Interview
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)' }}>Interviews</h1>
+        <Button onClick={() => setShowModal(true)}>
+          <Plus size={16} /> Schedule Interview
         </Button>
       </div>
 
-      {interviews.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon={<Calendar size={24} />}
-            title="No interviews scheduled"
-            description="Schedule your first interview to get started."
-            action={<Button size="sm" onClick={() => setShowModal(true)}><Plus size={14} /> Schedule Interview</Button>}
-          />
-        </Card>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {(['all', 'scheduled', 'completed', 'cancelled', 'no_show'] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setFilterStatus(s)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-full)',
+              border: '1px solid var(--color-border)',
+              background: filterStatus === s ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: filterStatus === s ? 'white' : 'var(--color-text-muted)',
+              fontSize: 12.5,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {s === 'all' ? 'All' : s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={<Calendar size={24} />}
+          title="No interviews found"
+          description="Schedule an interview to get started."
+          action={<Button onClick={() => setShowModal(true)}>Schedule Interview</Button>}
+        />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {interviews.map(interview => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {filtered.map(interview => {
             const candidate = state.candidates.find(c => c.id === interview.candidateId);
             const job = state.jobs.find(j => j.id === interview.jobId);
             return (
-              <Card key={interview.id} padding="md" hover onClick={() => candidate && navigate(`/candidates/${candidate.id}`)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: '50%',
-                    background: 'var(--color-primary)',
-                    color: 'white', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0
-                  }}>
+              <Card key={interview.id} padding="md">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
                     {(candidate?.name || 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{candidate?.name || 'Unknown'}</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{job?.title || 'Unknown Job'}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{candidate?.name || 'Unknown Candidate'}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{job?.title || 'Unknown Job'} · {getInterviewTypeLabel(interview.type)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-subtle)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Clock size={12} />
+                      {formatDateTime(interview.scheduledAt)} · {interview.duration} min
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <Badge variant={statusVariant[interview.status] || 'default'}>{interview.status.replace('_', ' ')}</Badge>
-                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Clock size={11} /> {interview.duration}min · {interview.type}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Calendar size={11} /> {formatDate(interview.scheduledAt)}
-                    </span>
-                  </div>
+                  <Badge variant={statusVariant[interview.status]}>
+                    {interview.status.replace('_', ' ')}
+                  </Badge>
                 </div>
               </Card>
             );
@@ -124,19 +133,19 @@ export default function InterviewsPage() {
         </div>
       )}
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Schedule Interview" size="md">
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Schedule Interview">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Select
             label="Candidate"
             value={form.candidateId}
             onChange={e => setForm(f => ({ ...f, candidateId: e.target.value }))}
-            options={[{ value: '', label: 'Select candidate...' }, ...candidateOptions]}
+            options={candidateOptions}
           />
           <Select
-            label="Job"
+            label="Job Position"
             value={form.jobId}
             onChange={e => setForm(f => ({ ...f, jobId: e.target.value }))}
-            options={[{ value: '', label: 'Select job...' }, ...jobOptions]}
+            options={jobOptions}
           />
           <Select
             label="Interview Type"
@@ -144,29 +153,29 @@ export default function InterviewsPage() {
             onChange={e => setForm(f => ({ ...f, type: e.target.value as InterviewType }))}
             options={typeOptions}
           />
-          <Input
-            label="Date & Time"
-            value={form.scheduledAt}
-            onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
-            type="datetime-local"
-            required
-          />
-          <Input
-            label="Duration (minutes)"
-            value={form.duration}
-            onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
-            type="number"
-            placeholder="60"
-          />
-          <Input
-            label="Location / Meeting Link"
-            value={form.location}
-            onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
-            placeholder="https://meet.google.com/..."
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Date &amp; Time</label>
+              <input
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                style={{ width: '100%', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '9px 12px', color: 'var(--color-text)', fontSize: 13.5, outline: 'none' }}
+              />
+            </div>
+            <div style={{ width: 100 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}>Duration (min)</label>
+              <input
+                type="number"
+                value={form.duration}
+                onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
+                style={{ width: '100%', background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '9px 12px', color: 'var(--color-text)', fontSize: 13.5, outline: 'none' }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
             <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={!form.candidateId || !form.jobId || !form.scheduledAt}>Schedule</Button>
+            <Button onClick={handleSubmit}>Schedule</Button>
           </div>
         </div>
       </Modal>
