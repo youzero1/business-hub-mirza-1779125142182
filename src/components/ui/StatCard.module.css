@@ -1,0 +1,67 @@
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.iconWrap {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primary { background: var(--color-primary-light); color: var(--color-primary); }
+.success { background: var(--color-success-light); color: var(--color-success); }
+.warning { background: var(--color-warning-light); color: var(--color-warning); }
+.danger { background: var(--color-danger-light); color: var(--color-danger); }
+.info { background: var(--color-info-light); color: var(--color-info); }
+.accent { background: var(--color-accent-light); color: var(--color-accent); }
+
+.value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+}
+
+.label {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.trend {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+.trendUp {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.trendDown {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.trendLabel {
+  font-size: 11.5px;
+  color: var(--color-text-subtle);
+}
